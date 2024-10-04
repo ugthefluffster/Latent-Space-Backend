@@ -102,31 +102,24 @@ def get_star_texture():
     if not game_uuid or position is None:
         return jsonify({'error': 'Missing uuid or position'}), 400
 
-    # For printing purposes, let's print the position
     print(f"Received texture request for UUID {game_uuid}, position: {position}")
 
-    # Convert the position to a string to use as a key
     position_key = json.dumps(position)
-
     game = GameData.query.get(game_uuid)
     if not game:
         return jsonify({'error': 'Game data not found'}), 404
 
-    # Check if texture already exists for this position
     texture = Texture.query.filter_by(game_uuid=game_uuid, position_key=position_key).first()
 
     if texture:
         image_filename = texture.image_filename
     else:
-        # Assign a random image
         image_filename = f"{random.randint(1,10)}.jpg"
         new_texture = Texture(game_uuid=game_uuid, position_key=position_key, image_filename=image_filename)
         db.session.add(new_texture)
         db.session.commit()
 
-    # Send the image file
-    image_path = os.path.join('images', image_filename)  # assuming images are in 'images' folder
-
+    image_path = os.path.join('images', image_filename)  
     if not os.path.exists(image_path):
         return jsonify({'error': f'Image file {image_filename} not found'}), 404
 
