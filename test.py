@@ -1,71 +1,45 @@
 import requests
-import numpy as np
-from PIL import Image
-from io import BytesIO
+import os
+import json
 
-# Replace with your public_url
-base_url = "https://3ce7-34-124-163-51.ngrok-free.app"
+# Set the base URL for the server (adjust the port if needed)
+BASE_URL = "https://cb8c-35-240-229-36.ngrok-free.app"
 
-# Scaling factor for standard normal distribution
-sigma = 333333  # Approximately scales to ±1,000,000 at 3σ
+# Step 1: Register a new game and retrieve the UUID
+def register_game():
+    response = requests.post(f"{BASE_URL}/register")
+    if response.status_code == 200:
+        uuid = response.json().get('uuid')
+        print(f"Game registered with UUID: {uuid}")
+        return uuid
+    else:
+        print("Failed to register game.")
+        return None
 
-# Register a player
-response = requests.post(f"{base_url}/register")
-print("Registration Response:", response.json())
-
-# Check if the server is initialized
-if response.json().get('status') == 'ok':
-    game_id = response.json().get('game_id')
+# Step 2: Request a star texture with specific coordinates
+def request_star_texture(uuid, position):
+    payload = {
+        'uuid': uuid,
+        'position': position
+    }
     
-    coords = None  # Variable to store coordinates of the 3rd image
-
-    # Function to generate Gaussian coordinates
-    def generate_gaussian_coords(game_id, sigma):
-        return {
-            'game_id': game_id,
-            'x': int(np.random.normal(0, sigma)),
-            'y': int(np.random.normal(0, sigma)),
-            'z': int(np.random.normal(0, sigma)),
-            'w': int(np.random.normal(0, sigma)),
-            'v': int(np.random.normal(0, sigma))
-        }
-
-    # Retrieve 3 images with random coordinates following a standard normal distribution
-    for i in range(3):
-        # Generate random coordinates using Gaussian distribution
-        coords = generate_gaussian_coords(game_id, sigma)
-        print(f"\nRequesting image {i+1} with coordinates: {coords}")
-
-        # Request an image
-        image_response = requests.get(f"{base_url}/get_image", params=coords)
-        if image_response.status_code == 200:
-            # Open the image using PIL
-            img = Image.open(BytesIO(image_response.content))
-            # img.show()  # Uncomment if you want to display the image
-
-            # Save the image to a file
-            img_filename = f"downloaded_image_{i+1}.png"
-            img.save(img_filename)
-            print(f"Image {i+1} saved as {img_filename}")
-        else:
-            print(f"Failed to get image {i+1}:", image_response.text)
+    response = requests.post(f"{BASE_URL}/getStarTexture", json=payload)
     
-    # Now retrieve the last image 2 more times with the same coordinates
-    for i in range(4, 6):  # Images 4 and 5
-        print(f"\nRequesting image {i} with the same coordinates as image 3: {coords}")
+    if response.status_code == 200:
+        print("Image received, saving to file.")
+        with open('star_texture.jpg', 'wb') as f:
+            f.write(response.content)
+        print("Image saved as 'star_texture.jpg'")
+    else:
+        print(f"Failed to retrieve texture: {response.status_code}, {response.json()}")
 
-        # Request the image with the same coordinates
-        image_response = requests.get(f"{base_url}/get_image", params=coords)
-        if image_response.status_code == 200:
-            # Open the image using PIL
-            img = Image.open(BytesIO(image_response.content))
-            # img.show()  # Uncomment if you want to display the image
-
-            # Save the image to a file
-            img_filename = f"downloaded_image_{i}.png"
-            img.save(img_filename)
-            print(f"Image {i} saved as {img_filename}")
-        else:
-            print(f"Failed to get image {i}:", image_response.text)
-else:
-    print("Server is initializing. Please wait.")
+# Step 3: Test the flow
+if __name__ == "__main__":
+    # Register the game
+    game_uuid = register_game()
+    
+    if game_uuid:
+        for i in range(1,5):
+            # Request a star texture with coordinates (example: [1000000, -500000])
+            position = [i*100000, 0, 0, 0, 0]
+            request_star_texture(game_uuid, position)
